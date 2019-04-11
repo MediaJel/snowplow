@@ -12,9 +12,11 @@
  */
 package com.snowplowanalytics.snowplow.enrich.common.enrichments.registry
 
-import cats.data.{NonEmptyList, Validated}
+import cats.Eval
+import cats.data.{NonEmptyList, Validated, ValidatedNel}
 import cats.syntax.validated._
-import com.snowplowanalytics.forex.oerclient.DeveloperAccount
+import com.snowplowanalytics.forex.model._
+import org.joda.money.CurrencyUnit
 import org.joda.time.DateTime
 import org.specs2.Specification
 import org.specs2.matcher.DataTables
@@ -38,21 +40,22 @@ class CurrencyConversionEnrichmentSpec extends Specification with DataTables {
     .get(OerApiKey)
     .getOrElse(throw new IllegalStateException(
       s"No ${OerApiKey} environment variable found, test should have been skipped"))
-  val trCurrencyMissing = Validated.Invalid(
+  type Result = ValidatedNel[String, (Option[String], Option[String], Option[String], Option[String])]
+  val trCurrencyMissing: Result = Validated.Invalid(
     NonEmptyList.of(
       "Open Exchange Rates error, message: Currency [] is not supported by Joda money Currency not found in the API, invalid currency ",
       "Open Exchange Rates error, message: Currency [] is not supported by Joda money Currency not found in the API, invalid currency ",
       "Open Exchange Rates error, message: Currency [] is not supported by Joda money Currency not found in the API, invalid currency "
     ))
-  val currencyInvalidRup = Validated.Invalid(
+  val currencyInvalidRup: Result = Validated.Invalid(
     NonEmptyList.of(
       "Open Exchange Rates error, type: [IllegalCurrency], message: [Currency [RUP] is not supported by Joda money Currency not found in the API, invalid currency ]",
       "Open Exchange Rates error, type: [IllegalCurrency], message: [Currency [RUP] is not supported by Joda money Currency not found in the API, invalid currency ]",
       "Open Exchange Rates error, type: [IllegalCurrency], message: [Currency [RUP] is not supported by Joda money Currency not found in the API, invalid currency ]"
     ))
-  val currencyInvalidHul =
+  val currencyInvalidHul: Result =
     "Open Exchange Rates error, type: [IllegalCurrency], message: [Currency [HUL] is not supported by Joda money Currency not found in the API, invalid currency ]".invalidNel
-  val invalidAppKeyFailure =
+  val invalidAppKeyFailure: Result =
     "Open Exchange Rates error, type: [OtherErrors], message: [Invalid App ID provided. Please sign up at https://openexchangerates.org/signup, or contact support@openexchangerates.org.]".invalidNel
   val coTstamp: DateTime = new DateTime(2011, 3, 13, 0, 0)
 
@@ -74,16 +77,20 @@ class CurrencyConversionEnrichmentSpec extends Specification with DataTables {
         tiCurrency,
         tiPrice,
         dateTime,
-        expected) =>
-        CurrencyConversionEnrichment(DeveloperAccount, apiKey, "EUR", "EOD_PRIOR")
-          .convertCurrencies(
-            trCurrency,
-            trAmountTotal,
-            trAmountTax,
-            trAmountShipping,
-            tiCurrency,
-            tiPrice,
-            dateTime) must_== expected
+        expected
+      ) => (for {
+        c <- Eval.now(CurrencyConversionConf(DeveloperAccount, apiKey, CurrencyUnit.EUR))
+        e <- c.enrichment[Eval]
+        res <- e.convertCurrencies(
+          trCurrency,
+          trAmountTotal,
+          trAmountTax,
+          trAmountShipping,
+          tiCurrency,
+          tiPrice,
+          dateTime
+        )
+      } yield res).value must_== expected
     }
 
   def e2 =
@@ -125,15 +132,19 @@ class CurrencyConversionEnrichmentSpec extends Specification with DataTables {
         tiCurrency,
         tiPrice,
         dateTime,
-        expected) =>
-        CurrencyConversionEnrichment(DeveloperAccount, apiKey, "EUR", "EOD_PRIOR")
-          .convertCurrencies(
-            trCurrency,
-            trAmountTotal,
-            trAmountTax,
-            trAmountShipping,
-            tiCurrency,
-            tiPrice,
-            dateTime) must_== expected
+        expected
+      ) => (for {
+        c <- Eval.now(CurrencyConversionConf(DeveloperAccount, apiKey, CurrencyUnit.EUR))
+        e <- c.enrichment[Eval]
+        res <- e.convertCurrencies(
+          trCurrency,
+          trAmountTotal,
+          trAmountTax,
+          trAmountShipping,
+          tiCurrency,
+          tiPrice,
+          dateTime
+        )
+      } yield res).value must_== expected
     }
 }

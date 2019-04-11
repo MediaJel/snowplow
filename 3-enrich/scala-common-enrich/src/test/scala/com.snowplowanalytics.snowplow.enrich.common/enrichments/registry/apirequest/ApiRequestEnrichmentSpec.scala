@@ -14,9 +14,8 @@ package com.snowplowanalytics.snowplow.enrich.common
 package enrichments.registry.apirequest
 
 import cats.syntax.either._
-import com.snowplowanalytics.iglu.client.JsonSchemaPair
-import com.snowplowanalytics.iglu.client.SchemaKey
-import io.circe.jackson.circeToJackson
+import com.snowplowanalytics.iglu.core.{SchemaKey, SchemaVer, SelfDescribingData}
+import io.circe.Json
 import io.circe.literal._
 import io.circe.parser._
 import org.specs2.Specification
@@ -39,7 +38,8 @@ class ApiRequestEnrichmentSpec extends Specification with ValidatedMatchers with
       "com.snowplowanalytics.snowplow.enrichments",
       "api_request_enrichment_config",
       "jsonschema",
-      "1-0-0")
+      SchemaVer.Full(1, 0, 0)
+    )
 
   def e1 = {
     val inputs = List(
@@ -70,13 +70,14 @@ class ApiRequestEnrichmentSpec extends Specification with ValidatedMatchers with
       user_id = "some-fancy-user-id"
     }
 
-    val clientSession: JsonSchemaPair = (
+    val clientSession: SelfDescribingData[Json] = SelfDescribingData[Json](
       SchemaKey(
-        vendor = "com.snowplowanalytics.snowplow",
-        name = "client_session",
-        format = "jsonschema",
-        version = "1-0-1"),
-      circeToJackson(json"""{
+        "com.snowplowanalytics.snowplow",
+        "client_session",
+        "jsonschema",
+        SchemaVer.Full(1, 0, 1)
+      ),
+      json"""{
         "data": {
             "userId": "some-fancy-user-session-id",
             "sessionId": "42c8a55b-c0c2-4749-b9ac-09bb0d17d000",
@@ -84,7 +85,7 @@ class ApiRequestEnrichmentSpec extends Specification with ValidatedMatchers with
             "previousSessionId": null,
             "storageMechanism": "COOKIE_1"
         }
-      }""")
+      }"""
     )
 
     val configuration = parse(
@@ -141,7 +142,7 @@ class ApiRequestEnrichmentSpec extends Specification with ValidatedMatchers with
       }
     }""").toOption.get
 
-    ApiRequestEnrichmentConfig.parse(configuration, SCHEMA_KEY) must beValid(config)
+    ApiRequestEnrichment.parse(configuration, SCHEMA_KEY) must beValid(config)
 
     val user = json"""{
       "schema": "iglu:com.acme/user/jsonschema/1-0-0",
@@ -214,7 +215,7 @@ class ApiRequestEnrichmentSpec extends Specification with ValidatedMatchers with
         }
       }
     }""").toOption.get
-    ApiRequestEnrichmentConfig.parse(configuration, SCHEMA_KEY) must beInvalid
+    ApiRequestEnrichment.parse(configuration, SCHEMA_KEY) must beInvalid
   }
 
   def e3 = {
@@ -268,7 +269,7 @@ class ApiRequestEnrichmentSpec extends Specification with ValidatedMatchers with
         }
       }
     }""").toOption.get
-    ApiRequestEnrichmentConfig.parse(configuration, SCHEMA_KEY) must beInvalid
+    ApiRequestEnrichment.parse(configuration, SCHEMA_KEY) must beInvalid
   }
 
   def e4 = {
@@ -301,13 +302,14 @@ class ApiRequestEnrichmentSpec extends Specification with ValidatedMatchers with
       user_id = "some-fancy-user-id"
     }
 
-    val clientSession: JsonSchemaPair = (
+    val clientSession: SelfDescribingData[Json] = SelfDescribingData(
       SchemaKey(
-        vendor = "com.snowplowanalytics.snowplow",
-        name = "client_session",
-        format = "jsonschema",
-        version = "1-0-1"),
-      circeToJackson(json"""{
+        "com.snowplowanalytics.snowplow",
+        "client_session",
+        "jsonschema",
+        SchemaVer.Full(1, 0, 1)
+      ),
+      json"""{
         "data": {
             "userId": "some-fancy-user-session-id",
             "sessionId": "42c8a55b-c0c2-4749-b9ac-09bb0d17d000",
@@ -315,7 +317,7 @@ class ApiRequestEnrichmentSpec extends Specification with ValidatedMatchers with
             "previousSessionId": null,
             "storageMechanism": "COOKIE_1"
         }
-      }""")
+      }"""
     )
 
     val configuration = parse(
@@ -372,7 +374,7 @@ class ApiRequestEnrichmentSpec extends Specification with ValidatedMatchers with
       }
    }""").toOption.get
 
-    ApiRequestEnrichmentConfig.parse(configuration, SCHEMA_KEY) must beValid(config)
+    ApiRequestEnrichment.parse(configuration, SCHEMA_KEY) must beValid(config)
 
     val user = json"""{
       "schema": "iglu:com.acme/user/jsonschema/1-0-0",

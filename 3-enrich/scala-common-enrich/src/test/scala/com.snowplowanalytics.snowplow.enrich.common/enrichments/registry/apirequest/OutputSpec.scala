@@ -12,7 +12,6 @@
  */
 package com.snowplowanalytics.snowplow.enrich.common.enrichments.registry.apirequest
 
-import cats.syntax.either._
 import io.circe._
 import io.circe.literal._
 import org.specs2.Specification

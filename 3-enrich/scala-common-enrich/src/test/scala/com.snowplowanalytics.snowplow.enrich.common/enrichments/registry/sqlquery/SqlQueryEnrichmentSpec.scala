@@ -12,8 +12,7 @@
  */
 package com.snowplowanalytics.snowplow.enrich.common.enrichments.registry.sqlquery
 
-import cats.syntax.either._
-import com.snowplowanalytics.iglu.client.SchemaKey
+import com.snowplowanalytics.iglu.core.{SchemaKey, SchemaVer}
 import io.circe.parser._
 import org.specs2.Specification
 import org.specs2.matcher.ValidatedMatchers
@@ -31,7 +30,8 @@ class SqlQueryEnrichmentSpec extends Specification with ValidatedMatchers {
       "com.snowplowanalytics.snowplow.enrichments",
       "sql_query_enrichment_config",
       "jsonschema",
-      "1-0-0")
+      SchemaVer.Full(1, 0, 0)
+    )
 
   def e1 = {
     val inputs = List(
@@ -119,7 +119,7 @@ class SqlQueryEnrichmentSpec extends Specification with ValidatedMatchers {
         }
       }""").toOption.get
 
-    SqlQueryEnrichmentConfig.parse(configuration, SCHEMA_KEY) must beValid(config)
+    SqlQueryEnrichment.parse(configuration, SCHEMA_KEY) must beValid(config)
   }
 
   def e2 = {
@@ -181,7 +181,7 @@ class SqlQueryEnrichmentSpec extends Specification with ValidatedMatchers {
         }
       }""").toOption.get
 
-    SqlQueryEnrichmentConfig.parse(configuration, SCHEMA_KEY) must beInvalid
+    SqlQueryEnrichment.parse(configuration, SCHEMA_KEY) must beInvalid
   }
 
   def e3 = {
@@ -242,6 +242,6 @@ class SqlQueryEnrichmentSpec extends Specification with ValidatedMatchers {
         }
       }""").toOption.get
 
-    SqlQueryEnrichmentConfig.parse(configuration, SCHEMA_KEY) must beValid
+    SqlQueryEnrichment.parse(configuration, SCHEMA_KEY) must beValid
   }
 }

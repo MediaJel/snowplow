@@ -279,10 +279,11 @@ object ConversionUtils {
    * @param encoding Encoding of the URI
    */
   def extractQuerystring(uri: URI, encoding: Charset): Either[String, Map[String, String]] =
-    Try(URLEncodedUtils.parse(uri, encoding).asScala.map(p => (p.getName -> p.getValue))).recoverWith {
-      case NonFatal(_) =>
-        Try(Uri.parse(uri.toString).query.params).map(l => l.map(t => (t._1, t._2.getOrElse(""))))
-    } match {
+    Try(URLEncodedUtils.parse(uri, encoding).asScala.map(p => (p.getName -> p.getValue)))
+      .recoverWith {
+        case NonFatal(_) =>
+          Try(Uri.parse(uri.toString).query.params).map(l => l.map(t => (t._1, t._2.getOrElse(""))))
+      } match {
       case util.Success(s) => s.toMap.asRight
       case util.Failure(e) =>
         s"Could not parse uri [$uri]. Uri parsing threw exception: [$e].".asLeft

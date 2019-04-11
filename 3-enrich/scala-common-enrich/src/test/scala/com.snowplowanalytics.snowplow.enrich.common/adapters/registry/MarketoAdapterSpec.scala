@@ -21,6 +21,7 @@ import org.specs2.Specification
 import org.specs2.matcher.{DataTables, ValidatedMatchers}
 
 import loaders.{CollectorApi, CollectorContext, CollectorPayload, CollectorSource}
+import utils.Clock._
 
 class MarketoAdapterSpec extends Specification with DataTables with ValidatedMatchers {
   def is = s2"""
@@ -28,8 +29,6 @@ class MarketoAdapterSpec extends Specification with DataTables with ValidatedMat
   toRawEvents must return a success for a valid "event" type payload body being passed                $e1
   toRawEvents must return a Failure Nel if the payload body is empty                                  $e2
   """
-
-  implicit val resolver = SpecHelpers.IgluResolver
 
   object Shared {
     val api = CollectorApi("com.marketo", "v1")
@@ -68,13 +67,13 @@ class MarketoAdapterSpec extends Specification with DataTables with ValidatedMat
         Shared.cljSource,
         Shared.context
       ))
-    MarketoAdapter.toRawEvents(payload) must beValid(expected)
+    MarketoAdapter.toRawEvents(payload, SpecHelpers.client).value must beValid(expected)
   }
 
   def e2 = {
     val payload =
       CollectorPayload(Shared.api, Nil, ContentType.some, None, Shared.cljSource, Shared.context)
-    MarketoAdapter.toRawEvents(payload) must beInvalid(
+    MarketoAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(
       NonEmptyList.one("Request body is empty: no Marketo event to process"))
   }
 }

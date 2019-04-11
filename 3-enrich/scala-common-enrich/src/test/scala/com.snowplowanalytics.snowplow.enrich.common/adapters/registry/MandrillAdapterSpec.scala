@@ -22,6 +22,7 @@ import org.specs2.Specification
 import org.specs2.matcher.{DataTables, ValidatedMatchers}
 
 import loaders.{CollectorApi, CollectorContext, CollectorPayload, CollectorSource}
+import utils.Clock._
 
 class MandrillAdapterSpec extends Specification with DataTables with ValidatedMatchers {
   def is = s2"""
@@ -35,8 +36,6 @@ class MandrillAdapterSpec extends Specification with DataTables with ValidatedMa
   toRawEvents must return a Failure Nel if the payload content type is empty                            $e7
   toRawEvents must return a Failure Nel if the payload content type does not match expectation          $e8
   """
-
-  implicit val resolver = SpecHelpers.IgluResolver
 
   object Shared {
     val api = CollectorApi("com.mandrill", "v1")
@@ -193,7 +192,7 @@ class MandrillAdapterSpec extends Specification with DataTables with ValidatedMa
         Shared.context
       )
     )
-    MandrillAdapter.toRawEvents(payload) must beValid(expected)
+    MandrillAdapter.toRawEvents(payload, SpecHelpers.client).value must beValid(expected)
   }
 
   def e5 = { // Spec for nine seperate events where two have incorrect event names and one does not have event as a parameter
@@ -211,13 +210,13 @@ class MandrillAdapterSpec extends Specification with DataTables with ValidatedMa
       "Mandrill event at index [1] failed: type parameter [deferred] not recognized",
       "Mandrill event at index [2] failed: type parameter not provided - cannot determine event type"
     )
-    MandrillAdapter.toRawEvents(payload) must beInvalid(expected)
+    MandrillAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(expected)
   }
 
   def e6 = {
     val payload =
       CollectorPayload(Shared.api, Nil, ContentType.some, None, Shared.cljSource, Shared.context)
-    MandrillAdapter.toRawEvents(payload) must beInvalid(
+    MandrillAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(
       NonEmptyList.one("Request body is empty: no Mandrill events to process"))
   }
 
@@ -225,7 +224,7 @@ class MandrillAdapterSpec extends Specification with DataTables with ValidatedMa
     val body = "mandrill_events=%5B%7B%22event%22%3A%20%22subscribe%22%7D%5D"
     val payload =
       CollectorPayload(Shared.api, Nil, None, body.some, Shared.cljSource, Shared.context)
-    MandrillAdapter.toRawEvents(payload) must beInvalid(NonEmptyList.one(
+    MandrillAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(NonEmptyList.one(
       "Request body provided but content type empty, expected application/x-www-form-urlencoded for Mandrill"))
   }
 
@@ -234,7 +233,7 @@ class MandrillAdapterSpec extends Specification with DataTables with ValidatedMa
     val ct = "application/x-www-form-urlencoded; charset=utf-8"
     val payload =
       CollectorPayload(Shared.api, Nil, ct.some, body.some, Shared.cljSource, Shared.context)
-    MandrillAdapter.toRawEvents(payload) must beInvalid(NonEmptyList.one(
+    MandrillAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(NonEmptyList.one(
       "Content type of application/x-www-form-urlencoded; charset=utf-8 provided, expected application/x-www-form-urlencoded for Mandrill"))
   }
 }

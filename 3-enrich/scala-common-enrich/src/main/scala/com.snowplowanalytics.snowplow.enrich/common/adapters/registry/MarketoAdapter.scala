@@ -113,8 +113,8 @@ object MarketoAdapter extends Adapter {
     client: Client[F, Json]
   ): F[ValidatedNel[String, NonEmptyList[RawEvent]]] =
     (payload.body, payload.contentType) match {
-      case (None, _) => Monad[F].pure(
-        s"Request body is empty: no $VendorName event to process".invalidNel)
+      case (None, _) =>
+        Monad[F].pure(s"Request body is empty: no $VendorName event to process".invalidNel)
       case (Some(body), _) =>
         val _ = client
         val event = payloadBodyToEvent(body, payload)

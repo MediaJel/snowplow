@@ -66,16 +66,18 @@ object IgluAdapter extends Adapter {
     val _ = client
     val params = toMap(payload.querystring)
     (params.get("schema"), payload.body, payload.contentType) match {
-      case (_, Some(_), None) => Monad[F].pure(
-        s"$VendorName event failed: ContentType must be set for a POST payload".invalidNel)
+      case (_, Some(_), None) =>
+        Monad[F].pure(
+          s"$VendorName event failed: ContentType must be set for a POST payload".invalidNel)
       case (None, Some(body), Some(contentType)) =>
         Monad[F].pure(payloadSdJsonToEvent(payload, body, contentType, params))
       case (Some(schemaUri), Some(_), Some(_)) =>
         Monad[F].pure(payloadToEventWithSchema(payload, schemaUri, params))
       case (Some(schemaUri), None, _) =>
         Monad[F].pure(payloadToEventWithSchema(payload, schemaUri, params))
-      case (_, _, _) => Monad[F].pure(
-        s"$VendorName event failed: is not a sd-json or a valid GET or POST request".invalidNel)
+      case (_, _, _) =>
+        Monad[F].pure(
+          s"$VendorName event failed: is not a sd-json or a valid GET or POST request".invalidNel)
     }
   }
 

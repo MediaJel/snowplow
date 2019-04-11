@@ -14,14 +14,17 @@ package com.snowplowanalytics.snowplow.enrich.common
 package adapters
 package registry
 
+import cats.Eval
 import cats.data.NonEmptyList
 import cats.syntax.option._
+import com.snowplowanalytics.iglu.client.resolver.registries.RegistryLookup._
 import org.joda.time.DateTime
 import org.specs2.Specification
 import org.specs2.matcher.{DataTables, ValidatedMatchers}
 
 import loaders.{CollectorApi, CollectorContext, CollectorPayload, CollectorSource}
 import SpecHelpers._
+import utils.Clock._
 
 class CallrailAdapterSpec extends Specification with DataTables with ValidatedMatchers {
   def is = s2"""
@@ -92,7 +95,7 @@ class CallrailAdapterSpec extends Specification with DataTables with ValidatedMa
       "nuid" -> "-"
     )
     val payload = CollectorPayload(Shared.api, params, None, None, Shared.source, Shared.context)
-    val actual = CallrailAdapter.toRawEvents(payload, SpecHelpers.client).value
+    val actual = CallrailAdapter.toRawEvents[Eval](payload, SpecHelpers.client).value
 
     val expectedJson =
       """|{
@@ -152,7 +155,7 @@ class CallrailAdapterSpec extends Specification with DataTables with ValidatedMa
   def e2 = {
     val params = toNameValuePairs()
     val payload = CollectorPayload(Shared.api, params, None, None, Shared.source, Shared.context)
-    val actual = CallrailAdapter.toRawEvents(payload)
+    val actual = CallrailAdapter.toRawEvents[Eval](payload, SpecHelpers.client).value
 
     actual must beInvalid(NonEmptyList.one("Querystring is empty: no CallRail event to process"))
   }

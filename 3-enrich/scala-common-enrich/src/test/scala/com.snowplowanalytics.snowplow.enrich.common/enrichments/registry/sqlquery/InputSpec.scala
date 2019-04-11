@@ -15,7 +15,6 @@ package enrichments.registry.sqlquery
 
 import scala.collection.immutable.IntMap
 
-import cats.syntax.either._
 import cats.syntax.option._
 import io.circe._
 import io.circe.literal._

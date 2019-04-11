@@ -446,8 +446,8 @@ object GoogleAnalyticsAdapter extends Adapter {
       rawEvents <- body.lines.map(parsePayload(_, payload)).toList.toNel
     } yield rawEvents) match {
       case Some(rawEvents) => Monad[F].pure(rawEvents.sequence)
-      case None => Monad[F].pure(
-        s"Request body is empty: no $VendorName events to process".invalidNel)
+      case None =>
+        Monad[F].pure(s"Request body is empty: no $VendorName events to process".invalidNel)
     }
 
   /**

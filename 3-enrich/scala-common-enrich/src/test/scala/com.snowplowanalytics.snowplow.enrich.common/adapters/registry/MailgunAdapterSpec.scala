@@ -21,6 +21,7 @@ import org.specs2.Specification
 import org.specs2.matcher.{DataTables, ValidatedMatchers}
 
 import loaders.{CollectorApi, CollectorContext, CollectorPayload, CollectorSource}
+import utils.Clock._
 
 class MailgunAdapterSpec extends Specification with DataTables with ValidatedMatchers {
   def is = s2"""
@@ -41,8 +42,6 @@ class MailgunAdapterSpec extends Specification with DataTables with ValidatedMat
     payloadBodyToEvent must return a Failure if the event data is missing 'token'                                $e14
     payloadBodyToEvent must return a Failure if the event data is missing 'signature'                            $e15
     """
-
-  implicit val resolver = SpecHelpers.IgluResolver
 
   object Shared {
     val api = CollectorApi("com.mailgun", "v1")
@@ -93,7 +92,7 @@ class MailgunAdapterSpec extends Specification with DataTables with ValidatedMat
         ContentType.some,
         Shared.cljSource,
         Shared.context))
-    MailgunAdapter.toRawEvents(payload) must beValid(expected)
+    MailgunAdapter.toRawEvents(payload, SpecHelpers.client).value must beValid(expected)
   }
 
   def e2 = {
@@ -139,7 +138,7 @@ class MailgunAdapterSpec extends Specification with DataTables with ValidatedMat
         ContentType.some,
         Shared.cljSource,
         Shared.context))
-    MailgunAdapter.toRawEvents(payload) must beValid(expected)
+    MailgunAdapter.toRawEvents(payload, SpecHelpers.client).value must beValid(expected)
   }
 
   def e3 = {
@@ -186,7 +185,7 @@ class MailgunAdapterSpec extends Specification with DataTables with ValidatedMat
         ContentType.some,
         Shared.cljSource,
         Shared.context))
-    MailgunAdapter.toRawEvents(payload) must beValid(expected)
+    MailgunAdapter.toRawEvents(payload, SpecHelpers.client).value must beValid(expected)
   }
 
   def e4 = {
@@ -233,7 +232,7 @@ class MailgunAdapterSpec extends Specification with DataTables with ValidatedMat
         ContentType.some,
         Shared.cljSource,
         Shared.context))
-    MailgunAdapter.toRawEvents(payload) must beValid(expected)
+    MailgunAdapter.toRawEvents(payload, SpecHelpers.client).value must beValid(expected)
   }
 
   def e5 = {
@@ -278,12 +277,12 @@ class MailgunAdapterSpec extends Specification with DataTables with ValidatedMat
         Shared.cljSource,
         Shared.context
       ))
-    MailgunAdapter.toRawEvents(payload) must beValid(expected)
+    MailgunAdapter.toRawEvents(payload, SpecHelpers.client).value must beValid(expected)
   }
   def e6 = {
     val payload =
       CollectorPayload(Shared.api, Nil, ContentType.some, None, Shared.cljSource, Shared.context)
-    MailgunAdapter.toRawEvents(payload) must beInvalid(
+    MailgunAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(
       NonEmptyList.one("Request body is empty: no Mailgun events to process"))
   }
 
@@ -291,7 +290,7 @@ class MailgunAdapterSpec extends Specification with DataTables with ValidatedMat
     val body = ""
     val payload =
       CollectorPayload(Shared.api, Nil, None, body.some, Shared.cljSource, Shared.context)
-    MailgunAdapter.toRawEvents(payload) must beInvalid(NonEmptyList.one(
+    MailgunAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(NonEmptyList.one(
       "Request body provided but content type empty, expected application/x-www-form-urlencoded or multipart/form-data for Mailgun"))
   }
 
@@ -300,7 +299,7 @@ class MailgunAdapterSpec extends Specification with DataTables with ValidatedMat
     val ct = "application/json"
     val payload =
       CollectorPayload(Shared.api, Nil, ct.some, body.some, Shared.cljSource, Shared.context)
-    MailgunAdapter.toRawEvents(payload) must beInvalid(NonEmptyList.one(
+    MailgunAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(NonEmptyList.one(
       "Content type of application/json provided, expected application/x-www-form-urlencoded or multipart/form-data for Mailgun"))
   }
 
@@ -314,7 +313,7 @@ class MailgunAdapterSpec extends Specification with DataTables with ValidatedMat
       Shared.cljSource,
       Shared.context)
     val expected = NonEmptyList.one("Mailgun event body is empty: nothing to process")
-    MailgunAdapter.toRawEvents(payload) must beInvalid(expected)
+    MailgunAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(expected)
   }
 
   def e10 = {
@@ -329,7 +328,7 @@ class MailgunAdapterSpec extends Specification with DataTables with ValidatedMat
       Shared.context)
     val expected = NonEmptyList.one(
       "Mailgun adapter could not parse body: [Illegal character in query at index 261: http://localhost/?X-MailgunSid=WyIxZjQzMiIsICJyb25ueUBrZGUub3JnIiwgIjliMjYwIl0%3D&event=delivered&timestamp=1467040750&token=c2fc6a36198fa651243afb6042867b7490e480843198008c6b&signature=9387fb0e5ff02de5e159594173f02c95c55d7e681b40a7b930ed4d0a3cbbdd6e&recipient=<>]")
-    MailgunAdapter.toRawEvents(payload) must beInvalid(expected)
+    MailgunAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(expected)
   }
 
   def e11 = {
@@ -344,7 +343,7 @@ class MailgunAdapterSpec extends Specification with DataTables with ValidatedMat
       Shared.context)
     val expected =
       NonEmptyList.one("No Mailgun event parameter provided: cannot determine event type")
-    MailgunAdapter.toRawEvents(payload) must beInvalid(expected)
+    MailgunAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(expected)
   }
 
   def e12 = {
@@ -359,7 +358,7 @@ class MailgunAdapterSpec extends Specification with DataTables with ValidatedMat
       Shared.context)
     val expected =
       NonEmptyList.one("Mailgun event failed: type parameter [released] not recognized")
-    MailgunAdapter.toRawEvents(payload) must beInvalid(expected)
+    MailgunAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(expected)
   }
 
   def e13 = {
@@ -373,7 +372,7 @@ class MailgunAdapterSpec extends Specification with DataTables with ValidatedMat
       Shared.cljSource,
       Shared.context)
     val expected = NonEmptyList.one("Mailgun event data missing 'timestamp'")
-    MailgunAdapter.toRawEvents(payload) must beInvalid(expected)
+    MailgunAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(expected)
   }
 
   def e14 = {
@@ -387,7 +386,7 @@ class MailgunAdapterSpec extends Specification with DataTables with ValidatedMat
       Shared.cljSource,
       Shared.context)
     val expected = NonEmptyList.one("Mailgun event data missing 'token'")
-    MailgunAdapter.toRawEvents(payload) must beInvalid(expected)
+    MailgunAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(expected)
   }
 
   def e15 = {
@@ -401,6 +400,6 @@ class MailgunAdapterSpec extends Specification with DataTables with ValidatedMat
       Shared.cljSource,
       Shared.context)
     val expected = NonEmptyList.one("Mailgun event data missing 'signature'")
-    MailgunAdapter.toRawEvents(payload) must beInvalid(expected)
+    MailgunAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(expected)
   }
 }

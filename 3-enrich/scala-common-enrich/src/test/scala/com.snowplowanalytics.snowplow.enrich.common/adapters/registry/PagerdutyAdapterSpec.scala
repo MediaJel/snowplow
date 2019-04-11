@@ -22,6 +22,7 @@ import org.specs2.Specification
 import org.specs2.matcher.{DataTables, ValidatedMatchers}
 
 import loaders._
+import utils.Clock._
 
 class PagerdutyAdapterSpec extends Specification with DataTables with ValidatedMatchers {
   def is = s2"""
@@ -37,8 +38,6 @@ class PagerdutyAdapterSpec extends Specification with DataTables with ValidatedM
   toRawEvents must return a Nel Failure if the content type is missing                               $e9
   toRawEvents must return a Nel Failure if the content type is incorrect                             $e10
   """
-
-  implicit val resolver = SpecHelpers.IgluResolver
 
   object Shared {
     val api = CollectorApi("com.pagerduty", "v1")
@@ -123,7 +122,7 @@ class PagerdutyAdapterSpec extends Specification with DataTables with ValidatedM
         Shared.cljSource,
         Shared.context
       ))
-    PagerdutyAdapter.toRawEvents(payload) must beValid(expected)
+    PagerdutyAdapter.toRawEvents(payload, SpecHelpers.client).value must beValid(expected)
   }
 
   def e7 = {
@@ -137,20 +136,21 @@ class PagerdutyAdapterSpec extends Specification with DataTables with ValidatedM
       Shared.cljSource,
       Shared.context)
     val expected = "PagerDuty event at index [0] failed: type parameter [trigger] not recognized"
-    PagerdutyAdapter.toRawEvents(payload) must beInvalid(NonEmptyList.one(expected))
+    PagerdutyAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(
+      NonEmptyList.one(expected))
   }
 
   def e8 = {
     val payload =
       CollectorPayload(Shared.api, Nil, ContentType.some, None, Shared.cljSource, Shared.context)
-    PagerdutyAdapter.toRawEvents(payload) must beInvalid(
+    PagerdutyAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(
       NonEmptyList.one("Request body is empty: no PagerDuty events to process"))
   }
 
   def e9 = {
     val payload =
       CollectorPayload(Shared.api, Nil, None, "stub".some, Shared.cljSource, Shared.context)
-    PagerdutyAdapter.toRawEvents(payload) must beInvalid(
+    PagerdutyAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(
       NonEmptyList.one(
         "Request body provided but content type empty, expected application/json for PagerDuty"))
   }
@@ -163,7 +163,7 @@ class PagerdutyAdapterSpec extends Specification with DataTables with ValidatedM
       "stub".some,
       Shared.cljSource,
       Shared.context)
-    PagerdutyAdapter.toRawEvents(payload) must beInvalid(NonEmptyList.one(
+    PagerdutyAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(NonEmptyList.one(
       "Content type of application/x-www-form-urlencoded provided, expected application/json for PagerDuty"))
   }
 }

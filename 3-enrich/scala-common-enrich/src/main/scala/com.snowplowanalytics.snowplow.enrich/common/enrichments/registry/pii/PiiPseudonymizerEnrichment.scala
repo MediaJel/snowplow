@@ -45,10 +45,11 @@ object PiiPseudonymizerEnrichment extends ParseableEnrichment {
       0,
       0)
 
-  def parse(
+  override def parse(
     config: Json,
-    schemaKey: SchemaKey
-  ): ValidatedNel[String, PiiPseudonymizerEnrichment] = {
+    schemaKey: SchemaKey,
+    localMode: Boolean = false
+  ): ValidatedNel[String, PiiPseudonymizerConf] = {
     for {
       conf <- matchesSchema(config, schemaKey)
       emitIdentificationEvent = CirceUtils
@@ -62,7 +63,7 @@ object PiiPseudonymizerEnrichment extends ParseableEnrichment {
         .extract[PiiStrategyPseudonymize](config, "parameters", "strategy")
         .toEither
       piiFieldList <- extractFields(piiFields)
-    } yield PiiPseudonymizerEnrichment(piiFieldList, emitIdentificationEvent, piiStrategy)
+    } yield PiiPseudonymizerConf(piiFieldList, emitIdentificationEvent, piiStrategy)
   }.toValidatedNel
 
   private[pii] def getHashFunction(strategyFunction: String): Either[String, DigestFunction] =
@@ -158,9 +159,9 @@ final case class PiiStrategyPseudonymize(
  * effectively a scalar field in the EnrichedEvent, whereas a `json` is a "context" formatted field
  * and it can either contain a single value in the case of unstruct_event, or an array in the case
  * of derived_events and contexts.
- * @param fieldList a list of configured PiiFields
- * @param emitIdentificationEvent whether to emit an identification event
- * @param strategy the pseudonymization strategy to use
+ * @param a list of configured PiiFields
+ * @param whether to emit an identification event
+ * @param the pseudonymization strategy to use
  */
 final case class PiiPseudonymizerEnrichment(
   fieldList: List[PiiField],

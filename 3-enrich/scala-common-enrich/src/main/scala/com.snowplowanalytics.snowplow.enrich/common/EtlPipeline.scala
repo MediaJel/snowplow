@@ -47,7 +47,7 @@ object EtlPipeline {
    * errors contained within the ValidatedMaybeCanonicalInput
    */
   def processEvents[F[_]: Monad: RegistryLookup: Clock](
-    registry: EnrichmentRegistry,
+    registry: EnrichmentRegistry[F],
     client: Client[F, Json],
     etlVersion: String,
     etlTstamp: DateTime,
@@ -64,20 +64,20 @@ object EtlPipeline {
 
     try {
       val e = for {
-          maybePayload <- input
+        maybePayload <- input
+      } yield
+        for {
+          payload <- maybePayload
         } yield
-          for {
-            payload <- maybePayload
-          } yield
-            (for {
-              events <- EitherT(AdapterRegistry.toRawEvents(payload, client).map(_.toEither))
-              enrichedEvents <-
-                events.map { e =>
-                  val r = EnrichmentManager
-                    .enrichEvent(registry, client, etlVersion, etlTstamp, e).map(_.toEither)
-                  EitherT(r)
-                }.sequence
-            } yield enrichedEvents).value.map(_.toValidated)
+          (for {
+            events <- EitherT(AdapterRegistry.toRawEvents(payload, client).map(_.toEither))
+            enrichedEvents <- events.map { e =>
+              val r = EnrichmentManager
+                .enrichEvent(registry, client, etlVersion, etlTstamp, e)
+                .map(_.toEither)
+              EitherT(r)
+            }.sequence
+          } yield enrichedEvents).value.map(_.toValidated)
 
       e.map(_.sequence).sequence.map(flattenToList)
     } catch {

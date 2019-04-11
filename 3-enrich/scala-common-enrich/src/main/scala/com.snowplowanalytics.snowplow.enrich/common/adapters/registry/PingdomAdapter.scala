@@ -67,15 +67,16 @@ object PingdomAdapter extends Adapter {
     client: Client[F, Json]
   ): F[ValidatedNel[String, NonEmptyList[RawEvent]]] =
     (payload.querystring) match {
-      case Nil => Monad[F].pure(
-        s"$VendorName payload querystring is empty: nothing to process".invalidNel)
+      case Nil =>
+        Monad[F].pure(s"$VendorName payload querystring is empty: nothing to process".invalidNel)
       case qs =>
         reformatMapParams(qs) match {
           case Left(f) => Monad[F].pure(f.invalid)
           case Right(s) =>
             s.get("message") match {
-              case None => Monad[F].pure(
-                s"$VendorName payload querystring does not have 'message' as a key".invalidNel)
+              case None =>
+                Monad[F].pure(
+                  s"$VendorName payload querystring does not have 'message' as a key".invalidNel)
               case Some(event) =>
                 Monad[F].pure((for {
                   parsedEvent <- parseJsonSafe(event)

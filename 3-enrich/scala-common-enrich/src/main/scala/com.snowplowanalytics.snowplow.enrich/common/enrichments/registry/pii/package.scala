@@ -89,7 +89,7 @@ package pii {
    * JSON field) along with a function to apply that strategy to the EnrichedEvent POJO (A scalar
    * field is represented in config py "pojo")
    */
-  private[pii] trait PiiField {
+  trait PiiField {
 
     /**
      * The POJO mutator for this field

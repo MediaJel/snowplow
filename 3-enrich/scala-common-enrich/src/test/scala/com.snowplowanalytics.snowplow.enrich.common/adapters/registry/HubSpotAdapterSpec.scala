@@ -23,6 +23,7 @@ import org.specs2.Specification
 import org.specs2.matcher.{DataTables, ValidatedMatchers}
 
 import loaders.{CollectorApi, CollectorContext, CollectorPayload, CollectorSource}
+import utils.Clock._
 
 class HubSpotAdapterSpec extends Specification with DataTables with ValidatedMatchers {
   def is = s2"""
@@ -35,8 +36,6 @@ class HubSpotAdapterSpec extends Specification with DataTables with ValidatedMat
   toRawEvents must return a Nel Failure if the content type is missing                               $e6
   toRawEvents must return a Nel Failure if the content type is incorrect                             $e7
   """
-
-  implicit val resolver = SpecHelpers.IgluResolver
 
   object Shared {
     val api = CollectorApi("com.hubspot", "v1")
@@ -91,7 +90,7 @@ class HubSpotAdapterSpec extends Specification with DataTables with ValidatedMat
         Shared.cljSource,
         Shared.context
       ))
-    HubSpotAdapter.toRawEvents(payload) must beValid(expected)
+    HubSpotAdapter.toRawEvents(payload, SpecHelpers.client).value must beValid(expected)
   }
 
   def e4 = {
@@ -105,20 +104,20 @@ class HubSpotAdapterSpec extends Specification with DataTables with ValidatedMat
       Shared.cljSource,
       Shared.context)
     val expected = "HubSpot event at index [0] failed: type parameter [contact] not recognized"
-    HubSpotAdapter.toRawEvents(payload) must beInvalid(NonEmptyList.one(expected))
+    HubSpotAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(NonEmptyList.one(expected))
   }
 
   def e5 = {
     val payload =
       CollectorPayload(Shared.api, Nil, ContentType.some, None, Shared.cljSource, Shared.context)
-    HubSpotAdapter.toRawEvents(payload) must beInvalid(
+    HubSpotAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(
       NonEmptyList.one("Request body is empty: no HubSpot events to process"))
   }
 
   def e6 = {
     val payload =
       CollectorPayload(Shared.api, Nil, None, "stub".some, Shared.cljSource, Shared.context)
-    HubSpotAdapter.toRawEvents(payload) must beInvalid(
+    HubSpotAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(
       NonEmptyList.one(
         "Request body provided but content type empty, expected application/json for HubSpot"))
   }
@@ -131,7 +130,7 @@ class HubSpotAdapterSpec extends Specification with DataTables with ValidatedMat
       "stub".some,
       Shared.cljSource,
       Shared.context)
-    HubSpotAdapter.toRawEvents(payload) must beInvalid(NonEmptyList.one(
+    HubSpotAdapter.toRawEvents(payload, SpecHelpers.client).value must beInvalid(NonEmptyList.one(
       "Content type of application/x-www-form-urlencoded provided, expected application/json for HubSpot"))
   }
 }

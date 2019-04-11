@@ -23,7 +23,7 @@ import org.specs2.matcher.{DataTables, ValidatedMatchers}
 
 import loaders.{CollectorApi, CollectorContext, CollectorPayload, CollectorSource}
 import utils.{ConversionUtils => CU}
-import SpecHelpers._
+import utils.Clock._
 
 class SnowplowAdapterSpec
     extends Specification
@@ -53,8 +53,6 @@ class SnowplowAdapterSpec
   Redirect.toRawEvents should return a Validation Failure if the event type is specified and the cx Base64 is corrupted   $e19
   """
 
-  implicit val resolver = SpecHelpers.IgluResolver
-
   object Snowplow {
     private val api: (String) => CollectorApi = version =>
       CollectorApi("com.snowplowanalytics.snowplow", version)
@@ -81,12 +79,12 @@ class SnowplowAdapterSpec
     val payload =
       CollectorPayload(
         Snowplow.Tp1,
-        toNameValuePairs("aid" -> "test"),
+        SpecHelpers.toNameValuePairs("aid" -> "test"),
         None,
         None,
         Shared.source,
         Shared.context)
-    val actual = Tp1Adapter.toRawEvents(payload)
+    val actual = Tp1Adapter.toRawEvents(payload, SpecHelpers.client).value
     actual must beValid(
       NonEmptyList.one(
         RawEvent(Snowplow.Tp1, Map("aid" -> "test"), None, Shared.source, Shared.context)))
@@ -94,19 +92,19 @@ class SnowplowAdapterSpec
 
   def e2 = {
     val payload = CollectorPayload(Snowplow.Tp1, Nil, None, None, Shared.source, Shared.context)
-    val actual = Tp1Adapter.toRawEvents(payload)
+    val actual = Tp1Adapter.toRawEvents(payload, SpecHelpers.client).value
     actual must beInvalid(NonEmptyList.one("Querystring is empty: no raw event to process"))
   }
 
   def e3 = {
     val payload = CollectorPayload(
       Snowplow.Tp2,
-      toNameValuePairs("aid" -> "tp2", "e" -> "se"),
+      SpecHelpers.toNameValuePairs("aid" -> "tp2", "e" -> "se"),
       None,
       None,
       Shared.source,
       Shared.context)
-    val actual = Tp2Adapter.toRawEvents(payload)
+    val actual = Tp2Adapter.toRawEvents(payload, SpecHelpers.client).value
     actual must beValid(
       NonEmptyList.one(
         RawEvent(
@@ -118,7 +116,8 @@ class SnowplowAdapterSpec
   }
 
   def e4 = {
-    val body = toSelfDescJson("""[{"tv":"ios-0.1.0","p":"mob","e":"se"}]""", "payload_data")
+    val body = SpecHelpers.toSelfDescJson(
+      """[{"tv":"ios-0.1.0","p":"mob","e":"se"}]""", "payload_data")
     val payload =
       CollectorPayload(
         Snowplow.Tp2,
@@ -127,7 +126,7 @@ class SnowplowAdapterSpec
         body.some,
         Shared.source,
         Shared.context)
-    val actual = Tp2Adapter.toRawEvents(payload)
+    val actual = Tp2Adapter.toRawEvents(payload, SpecHelpers.client).value
     actual must beValid(
       NonEmptyList.one(
         RawEvent(
@@ -139,17 +138,17 @@ class SnowplowAdapterSpec
   }
 
   def e5 = {
-    val body = toSelfDescJson(
+    val body = SpecHelpers.toSelfDescJson(
       """[{"tv":"1","p":"1","e":"1"},{"tv":"2","p":"2","e":"2"},{"tv":"3","p":"3","e":"3"}]""",
       "payload_data")
     val payload = CollectorPayload(
       Snowplow.Tp2,
-      toNameValuePairs("tv" -> "0", "nuid" -> "123"),
+      SpecHelpers.toNameValuePairs("tv" -> "0", "nuid" -> "123"),
       ApplicationJsonWithCapitalCharset.some,
       body.some,
       Shared.source,
       Shared.context)
-    val actual = Tp2Adapter.toRawEvents(payload)
+    val actual = Tp2Adapter.toRawEvents(payload, SpecHelpers.client).value
 
     val rawEvent: RawEventParameters => RawEvent = params =>
       RawEvent(
@@ -167,7 +166,8 @@ class SnowplowAdapterSpec
   }
 
   def e6 = {
-    val body = toSelfDescJson("""[{"tv":"ios-0.1.0","p":"mob","e":"se"}]""", "payload_data")
+    val body = SpecHelpers.toSelfDescJson(
+      """[{"tv":"ios-0.1.0","p":"mob","e":"se"}]""", "payload_data")
     val payload = CollectorPayload(
       Snowplow.Tp2,
       Nil,
@@ -175,7 +175,7 @@ class SnowplowAdapterSpec
       body.some,
       Shared.source,
       Shared.context)
-    val actual = Tp2Adapter.toRawEvents(payload)
+    val actual = Tp2Adapter.toRawEvents(payload, SpecHelpers.client).value
     actual must beValid(
       NonEmptyList.one(
         RawEvent(
@@ -191,8 +191,8 @@ class SnowplowAdapterSpec
       "Invalid content type" !! Nil ! "text/plain".some ! "body".some ! "Content type of text/plain provided, expected one of: application/json, application/json; charset=utf-8, application/json; charset=UTF-8" |
       "Neither querystring nor body populated" !! Nil ! None ! None ! "Request body and querystring parameters empty, expected at least one populated" |
       "Body populated but content type missing" !! Nil ! None ! "body".some ! "Request body provided but content type empty, expected one of: application/json, application/json; charset=utf-8, application/json; charset=UTF-8" |
-      "Content type populated but body missing" !! toNameValuePairs("a" -> "b") ! ApplicationJsonWithCharset.some ! None ! "Content type of application/json; charset=utf-8 provided but request body empty" |
-      "Body is not a JSON" !! toNameValuePairs("a" -> "b") ! ApplicationJson.some ! "body".some ! "Field [Body]: invalid JSON [body] with parsing error: expected json value got 'body' (line 1, column 1)" |> {
+      "Content type populated but body missing" !! SpecHelpers.toNameValuePairs("a" -> "b") ! ApplicationJsonWithCharset.some ! None ! "Content type of application/json; charset=utf-8 provided but request body empty" |
+      "Body is not a JSON" !! SpecHelpers.toNameValuePairs("a" -> "b") ! ApplicationJson.some ! "body".some ! "Field [Body]: invalid JSON [body] with parsing error: expected json value got 'body' (line 1, column 1)" |> {
 
       (_, querystring, contentType, body, expected) =>
         {
@@ -204,7 +204,7 @@ class SnowplowAdapterSpec
             body,
             Shared.source,
             Shared.context)
-          val actual = Tp2Adapter.toRawEvents(payload)
+          val actual = Tp2Adapter.toRawEvents(payload, SpecHelpers.client).value
           actual must beInvalid(NonEmptyList.one(expected))
         }
     }
@@ -212,12 +212,12 @@ class SnowplowAdapterSpec
   def e8 = {
     val payload = CollectorPayload(
       Snowplow.Tp2,
-      toNameValuePairs("aid" -> "test"),
+      SpecHelpers.toNameValuePairs("aid" -> "test"),
       ApplicationJson.some,
       """{"not":"self-desc"}""".some,
       Shared.source,
       Shared.context)
-    val actual = Tp2Adapter.toRawEvents(payload)
+    val actual = Tp2Adapter.toRawEvents(payload, SpecHelpers.client).value
     actual must beInvalid(
       NonEmptyList.of(
         """error: object instance has properties which are not allowed by the schema: ["not"]
@@ -241,7 +241,7 @@ class SnowplowAdapterSpec
   }
 
   def e9 = {
-    val body = toSelfDescJson("""{"longitude":20.1234}""", "geolocation_context")
+    val body = SpecHelpers.toSelfDescJson("""{"longitude":20.1234}""", "geolocation_context")
     val payload = CollectorPayload(
       Snowplow.Tp2,
       Nil,
@@ -249,7 +249,7 @@ class SnowplowAdapterSpec
       body.some,
       Shared.source,
       Shared.context)
-    val actual = Tp2Adapter.toRawEvents(payload)
+    val actual = Tp2Adapter.toRawEvents(payload, SpecHelpers.client).value
     actual must beInvalid(
       NonEmptyList.one(
         """error: Verifying schema as iglu:com.snowplowanalytics.snowplow/payload_data/jsonschema/1-0-* failed: found iglu:com.snowplowanalytics.snowplow/geolocation_context/jsonschema/1-0-0
@@ -301,7 +301,7 @@ class SnowplowAdapterSpec
         ) |> { (_, json, expected) =>
       {
 
-        val body = toSelfDescJson(json, "payload_data")
+        val body = SpecHelpers.toSelfDescJson(json, "payload_data")
         val payload =
           CollectorPayload(
             Snowplow.Tp2,
@@ -311,7 +311,7 @@ class SnowplowAdapterSpec
             Shared.source,
             Shared.context)
 
-        val actual = Tp2Adapter.toRawEvents(payload)
+        val actual = Tp2Adapter.toRawEvents(payload, SpecHelpers.client).value
         actual must beInvalid(expected)
       }
     }
@@ -319,12 +319,13 @@ class SnowplowAdapterSpec
   def e11 = {
     val payload = CollectorPayload(
       Snowplow.Tp2,
-      toNameValuePairs("u" -> "https://github.com/snowplow/snowplow", "cx" -> "dGVzdHRlc3R0ZXN0"),
+      SpecHelpers.toNameValuePairs(
+        "u" -> "https://github.com/snowplow/snowplow", "cx" -> "dGVzdHRlc3R0ZXN0"),
       None,
       None,
       Shared.source,
       Shared.context)
-    val actual = RedirectAdapter.toRawEvents(payload)
+    val actual = RedirectAdapter.toRawEvents(payload, SpecHelpers.client).value
     actual must beValid(
       NonEmptyList.one(RawEvent(
         Snowplow.Tp2,
@@ -344,12 +345,13 @@ class SnowplowAdapterSpec
   def e12 = {
     val payload = CollectorPayload(
       Snowplow.Tp2,
-      toNameValuePairs("u" -> "https://github.com/snowplow/snowplow", "e" -> "se", "aid" -> "ads"),
+      SpecHelpers.toNameValuePairs(
+        "u" -> "https://github.com/snowplow/snowplow", "e" -> "se", "aid" -> "ads"),
       None,
       None,
       Shared.source,
       Shared.context)
-    val actual = RedirectAdapter.toRawEvents(payload)
+    val actual = RedirectAdapter.toRawEvents(payload, SpecHelpers.client).value
     actual must beValid(
       NonEmptyList.one(RawEvent(
         Snowplow.Tp2,
@@ -369,7 +371,7 @@ class SnowplowAdapterSpec
   def e13 = {
     val payload = CollectorPayload(
       Snowplow.Tp2,
-      toNameValuePairs(
+      SpecHelpers.toNameValuePairs(
         "u" -> "https://github.com/snowplow/snowplow",
         "e" -> "se",
         "aid" -> "ads",
@@ -378,7 +380,7 @@ class SnowplowAdapterSpec
       None,
       Shared.source,
       Shared.context)
-    val actual = RedirectAdapter.toRawEvents(payload)
+    val actual = RedirectAdapter.toRawEvents(payload, SpecHelpers.client).value
     actual must beValid(
       NonEmptyList.one(RawEvent(
         Snowplow.Tp2,
@@ -398,7 +400,7 @@ class SnowplowAdapterSpec
   def e14 = {
     val payload = CollectorPayload(
       Snowplow.Tp2,
-      toNameValuePairs(
+      SpecHelpers.toNameValuePairs(
         "u" -> "https://github.com/snowplow/snowplow",
         "e" -> "se",
         "co" -> """{"data":[{"data":{"osType":"OSX","appleIdfv":"some_appleIdfv","openIdfa":"some_Idfa","carrier":"some_carrier","deviceModel":"large","osVersion":"3.0.0","appleIdfa":"some_appleIdfa","androidIdfa":"some_androidIdfa","deviceManufacturer":"Amstrad"},"schema":"iglu:com.snowplowanalytics.snowplow/mobile_context/jsonschema/1-0-0"},{"data":{"longitude":10,"bearing":50,"speed":16,"altitude":20,"altitudeAccuracy":0.3,"latitudeLongitudeAccuracy":0.5,"latitude":7},"schema":"iglu:com.snowplowanalytics.snowplow/geolocation_context/jsonschema/1-0-0"}],"schema":"iglu:com.snowplowanalytics.snowplow/contexts/jsonschema/1-0-0"}"""
@@ -408,7 +410,7 @@ class SnowplowAdapterSpec
       Shared.source,
       Shared.context
     )
-    val actual = RedirectAdapter.toRawEvents(payload)
+    val actual = RedirectAdapter.toRawEvents(payload, SpecHelpers.client).value
     actual must beValid(
       NonEmptyList.one(RawEvent(
         Snowplow.Tp2,
@@ -427,7 +429,7 @@ class SnowplowAdapterSpec
   def e15 = {
     val payload = CollectorPayload(
       Snowplow.Tp2,
-      toNameValuePairs(
+      SpecHelpers.toNameValuePairs(
         "u" -> "https://github.com/snowplow/snowplow",
         "e" -> "se",
         "cx" -> CU.encodeBase64Url(
@@ -439,7 +441,7 @@ class SnowplowAdapterSpec
       Shared.source,
       Shared.context
     )
-    val actual = RedirectAdapter.toRawEvents(payload)
+    val actual = RedirectAdapter.toRawEvents(payload, SpecHelpers.client).value
     actual must beValid(
       NonEmptyList.one(RawEvent(
         Snowplow.Tp2,
@@ -458,7 +460,7 @@ class SnowplowAdapterSpec
 
   def e16 = {
     val payload = CollectorPayload(Snowplow.Tp2, Nil, None, None, Shared.source, Shared.context)
-    val actual = RedirectAdapter.toRawEvents(payload)
+    val actual = RedirectAdapter.toRawEvents(payload, SpecHelpers.client).value
     actual must beInvalid(NonEmptyList.one("Querystring is empty: cannot be a valid URI redirect"))
   }
 
@@ -466,12 +468,12 @@ class SnowplowAdapterSpec
     val payload =
       CollectorPayload(
         Snowplow.Tp2,
-        toNameValuePairs("aid" -> "test"),
+        SpecHelpers.toNameValuePairs("aid" -> "test"),
         None,
         None,
         Shared.source,
         Shared.context)
-    val actual = RedirectAdapter.toRawEvents(payload)
+    val actual = RedirectAdapter.toRawEvents(payload, SpecHelpers.client).value
     actual must beInvalid(
       NonEmptyList.one("Querystring does not contain u parameter: not a valid URI redirect"))
   }
@@ -479,7 +481,7 @@ class SnowplowAdapterSpec
   def e18 = {
     val payload = CollectorPayload(
       Snowplow.Tp2,
-      toNameValuePairs(
+      SpecHelpers.toNameValuePairs(
         "u" -> "https://github.com/snowplow/snowplow",
         "e" -> "se",
         "co" -> """{[-"""),
@@ -487,7 +489,7 @@ class SnowplowAdapterSpec
       None,
       Shared.source,
       Shared.context)
-    val actual = RedirectAdapter.toRawEvents(payload)
+    val actual = RedirectAdapter.toRawEvents(payload, SpecHelpers.client).value
     actual must beInvalid(NonEmptyList.one(
       """Field [co|cx]: invalid JSON [{[-] with parsing error: expected " got '[-' (line 1, column 2)"""))
   }
@@ -495,12 +497,13 @@ class SnowplowAdapterSpec
   def e19 = {
     val payload = CollectorPayload(
       Snowplow.Tp2,
-      toNameValuePairs("u" -> "https://github.com/snowplow/snowplow", "e" -> "se", "cx" -> "¢¢¢"),
+      SpecHelpers.toNameValuePairs(
+        "u" -> "https://github.com/snowplow/snowplow", "e" -> "se", "cx" -> "¢¢¢"),
       None,
       None,
       Shared.source,
       Shared.context)
-    val actual = RedirectAdapter.toRawEvents(payload)
+    val actual = RedirectAdapter.toRawEvents(payload, SpecHelpers.client).value
     actual must beInvalid(
       NonEmptyList.one("Field [co|cx]: invalid JSON [] with parsing error: exhausted input"))
   }

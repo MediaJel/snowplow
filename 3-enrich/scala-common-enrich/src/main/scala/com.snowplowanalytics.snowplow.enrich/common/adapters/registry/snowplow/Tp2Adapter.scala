@@ -68,17 +68,18 @@ object Tp2Adapter extends Adapter {
     // Verify: body + content type set; content type matches expected; body contains expected JSON Schema; body passes schema validation
     val validatedParamsNel: F[ValidatedNel[String, NonEmptyList[RawEventParameters]]] =
       (payload.body, payload.contentType) match {
-        case (None, _) if qsParams.isEmpty => Monad[F].pure(
-          s"Request body and querystring parameters empty, expected at least one populated"
-            .invalidNel
-        )
-        case (_, Some(ct)) if !ContentTypes.list.contains(ct) => Monad[F].pure(
-          s"Content type of ${ct} provided, expected one of: ${ContentTypes.str}".invalidNel
-        )
-        case (Some(_), None) => Monad[F].pure(
-          s"Request body provided but content type empty, expected one of: ${ContentTypes.str}"
-            .invalidNel
-        )
+        case (None, _) if qsParams.isEmpty =>
+          Monad[F].pure(
+            s"Request body and querystring parameters empty, expected at least one populated".invalidNel
+          )
+        case (_, Some(ct)) if !ContentTypes.list.contains(ct) =>
+          Monad[F].pure(
+            s"Content type of ${ct} provided, expected one of: ${ContentTypes.str}".invalidNel
+          )
+        case (Some(_), None) =>
+          Monad[F].pure(
+            s"Request body provided but content type empty, expected one of: ${ContentTypes.str}".invalidNel
+          )
         case (None, Some(ct)) =>
           Monad[F].pure(s"Content type of ${ct} provided but request body empty".invalidNel)
         case (None, None) => Monad[F].pure(NonEmptyList.one(qsParams).valid)
@@ -185,12 +186,16 @@ object Tp2Adapter extends Adapter {
       j <- EitherT.fromEither(JU.extractJson(field, instance).leftMap(NonEmptyList.one))
       sd <- EitherT.fromEither(
         SelfDescribingData.parse(j).leftMap(parseError => NonEmptyList.one(parseError.code)))
-      _ <- client.check(sd).leftMap(e => NonEmptyList.one(e.toString))
+      _ <- client
+        .check(sd)
+        .leftMap(e => NonEmptyList.one(e.toString))
         .subflatMap { _ =>
           schemaCriterion.matches(sd.schema) match {
             case true => ().asRight
-            case false => NonEmptyList.one(
-              s"Schema criterion $schemaCriterion does not match schema ${sd.schema}").asLeft
+            case false =>
+              NonEmptyList
+                .one(s"Schema criterion $schemaCriterion does not match schema ${sd.schema}")
+                .asLeft
           }
         }
     } yield j

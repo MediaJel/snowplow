@@ -77,9 +77,9 @@ object CallrailAdapter extends Adapter {
     if (params.isEmpty) {
       Monad[F].pure("Querystring is empty: no CallRail event to process".invalidNel)
     } else {
-      Monad[F].pure(NonEmptyList
-        .of(
-          RawEvent(
+      Monad[F].pure(
+        NonEmptyList
+          .of(RawEvent(
             api = payload.api,
             parameters = toUnstructEventParams(
               TrackerVersion,
@@ -91,7 +91,7 @@ object CallrailAdapter extends Adapter {
             source = payload.source,
             context = payload.context
           ))
-        .valid)
+          .valid)
     }
   }
 }

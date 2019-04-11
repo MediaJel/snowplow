@@ -138,7 +138,11 @@ object Shredder {
     event: EnrichedEvent,
     client: Client[F, Json]
   ): Option[F[ValidatedNel[String, List[Json]]]] =
-    extractAndValidateJson("ue_properties", UePropertiesSchema, Option(event.unstruct_event), client)
+    extractAndValidateJson(
+      "ue_properties",
+      UePropertiesSchema,
+      Option(event.unstruct_event),
+      client)
       .map(_.map(_.map(_ :: Nil)))
 
   /**
@@ -167,16 +171,17 @@ object Shredder {
   private[shredder] def validate[F[_]: Monad: RegistryLookup: Clock](
     validatedJsons: ValidatedNel[String, List[Json]],
     client: Client[F, Json]
-  ): F[ValidatedNel[String, List[SelfDescribingData[Json]]]] = (for {
-    jsons <- EitherT.fromEither[F](validatedJsons.toEither)
-    validated <- jsons.map { json =>
-      for {
-        sd <- EitherT.fromEither[F](
-          SelfDescribingData.parse(json).leftMap(pe => NonEmptyList.one(pe.code)))
-        _ <- client.check(sd).leftMap(e => NonEmptyList.one(e.toString))
-      } yield sd
-    }.sequence
-  } yield validated).value.map(_.toValidated)
+  ): F[ValidatedNel[String, List[SelfDescribingData[Json]]]] =
+    (for {
+      jsons <- EitherT.fromEither[F](validatedJsons.toEither)
+      validated <- jsons.map { json =>
+        for {
+          sd <- EitherT.fromEither[F](
+            SelfDescribingData.parse(json).leftMap(pe => NonEmptyList.one(pe.code)))
+          _ <- client.check(sd).leftMap(e => NonEmptyList.one(e.toString))
+        } yield sd
+      }.sequence
+    } yield validated).value.map(_.toValidated)
 
   /**
    * Flatten Option[List] to List
@@ -254,14 +259,18 @@ object Shredder {
         j <- EitherT.fromEither[F](extractJson(field, i).leftMap(e => NonEmptyList.one(e)))
         sd <- EitherT.fromEither[F](
           SelfDescribingData.parse(j).leftMap(parseError => NonEmptyList.one(parseError.code)))
-       _ <- client.check(sd).leftMap(e => NonEmptyList.one(e.toString))
-         .subflatMap { _ =>
-           schemaCriterion.matches(sd.schema) match {
-             case true => ().asRight
-             case false => NonEmptyList.one(
-               s"Schema criterion $schemaCriterion does not match schema ${sd.schema}").asLeft
-           }
-         }
+        _ <- client
+          .check(sd)
+          .leftMap(e => NonEmptyList.one(e.toString))
+          .subflatMap { _ =>
+            schemaCriterion.matches(sd.schema) match {
+              case true => ().asRight
+              case false =>
+                NonEmptyList
+                  .one(s"Schema criterion $schemaCriterion does not match schema ${sd.schema}")
+                  .asLeft
+            }
+          }
       } yield j).toValidated
     }
 
